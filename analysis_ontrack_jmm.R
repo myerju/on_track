@@ -21,30 +21,7 @@ data <- read.csv("./Desktop/ontrack/ontrack.csv", na.strings = c(NA, ""))
   #starting with XX, 'xx', NA, missing, Hh-Hh, full name (centrell), repeated rows... 
 
 
-#pre_survey <- data %>%
-#  select(contains("pre"))
-
-#male <- data %>%
-#  filter(gender == 1)
-
 summary(data$redcap_event_name) #This is taking a summary of the redcap_event_name data)
-
-#Below is a bunch of messing around with functions stuff
-#number_rows <- data %>%
-#  select(redcap_event_name) %>% 
-#  nrow() 
-  #summary()
-
-#changeXX <- function(data, column_name){
-#  for (i in 1:number_rows){
-#    if (data[i, column_name] == "xx") {
-#      data[i, column_name] <- NA
-#    }
-#  }  
-#}
-
-#trial <-changeXX(data, "beginning_of_the_y_arm_1")
-
 
 
 arm_1 <- data %>% 
@@ -57,21 +34,17 @@ arm_2 <- data %>%
   
 #arm_3 <- data %>%
  # filter(redcap_event_name == "end_of_visit_arm_3") %>%
- # select(dob, mother, middle)
+ # select(dob, mother, middle, gender, grade, ms_school, hs_school)
 
 #arm_4 <- data %>%
 # filter(redcap_event_name == "end_of_middle_scho_arm_4") %>%
-# select(dob, mother, middle)
+# select(dob, mother, middle, gender, grade, ms_school, hs_school)
 
 #Making changing factor to character function:
 change_character <- function(arm){
   arm$mother <- as.character(arm$mother)
   arm$middle <- as.character(arm$middle)
 }
-
-#Change mother and middle values from factor to character so we can use ifelse
-#arm_1$mother <- as.character(arm_1$mother)
-#arm_1$middle <- as.character(arm_1$middle)
 
 
 #Making changing factor to lowercase to uppercase function:
@@ -81,17 +54,6 @@ lower_to_upper <- function(arm) {
     mutate(corr_middle = toupper(middle))
 }
 
-
-#Change lowercase to uppercase:
-#tidy_arm_1<- arm_1 %>%
-#  mutate(corr_mother = toupper(mother)) %>%
-#  mutate(corr_middle = toupper(middle))
-
-#full_name_correction <- function(arm) {
-#  arm <- arm %>%
-#    mutate(corr_mother = ifelse(nchar(corr_mother)!=2, NA, corr_mother)) %>%
-#    mutate(corr_middle = ifelse(nchar(corr_middle) !=2, NA, corr_middle))
-#}
 
 #The below function corrects the mother and middle ids. If they are longer than 2, we just 
 #take the first two letters. If they are only 1 character, we append an X to the value.
@@ -107,45 +69,35 @@ full_name_correction2 <- function(arm) {
 }
 
 
-#Changing values longer than 2 letters to NA:
-#tidy_arm_1 <- tidy_arm_1 %>%
-#  mutate(corr_mother = ifelse(nchar(corr_mother)!=2, NA, corr_mother)) %>%
-#  mutate(corr_middle = ifelse(nchar(corr_middle) !=2, NA, corr_middle))
-
-
-#Julianne's code:
-#tidy_arm_1 <- arm_1 %>%
-#  mutate_each(funs(corr = toupper), c(mother, middle))
-
-#xx_to_na <- function(arm) {
-#  arm <- arm %>%
-#    mutate(corr_mother = ifelse(corr_mother == "XX", NA, corr_mother)) %>%
-#    mutate(corr_middle = ifelse(corr_middle == "XX", NA, corr_middle))
-#}
-
-
 #Fixing 'XX' to XX:
-xx_to_na <- function(arm) {
+xx_fix <- function(arm) {
   arm <- arm %>%
     mutate(corr_mother = ifelse(corr_mother == "'XX'", "XX", corr_mother)) %>%
     mutate(corr_middle = ifelse(corr_middle == "'XX'", "XX", corr_middle)) 
 }
 
 #Changing DOB like 9 to 09:
-
 fix_dob <- function(arm) {
   arm <- arm %>%
     mutate(corr_dob = toString(dob)) %>%
     mutate(corr_dob = ifelse(nchar(dob) == 1, paste("0", dob, sep = ""), dob)) 
 }
  
-
+#Combine main three identifiers to create study ID
 make_id <- function(arm) {
   arm <- arm %>%
     mutate(id = ifelse(is.na(dob) & is.na(mother) & is.na(middle), NA, paste(corr_dob, corr_mother, corr_middle, sep = "")))
 }
 
+#Create community data from school data
+community <- function(arm) {
+  arm <- arm %>%
+    mutate(community = ifelse((ms_school %in% c(1, 4,5,7:10) | hs_school %in% c(1, 4,5,7:10)), 1,
+                              ifelse((ms_school %in% c(3, 12) | hs_school %in% c(3, 12)), 2,
+                                     ifelse((ms_school %in% c(2, 6, 11) | hs_school %in% c(2, 6, 11)), 3, NA))))
+}
 
+#Did we correct any of the information for main identifier columns?
 corrected <- function(arm) {
   arm <- arm %>%
     mutate(mother_corrected = ifelse(mother==corr_mother, 0, 1)) %>%
@@ -154,44 +106,52 @@ corrected <- function(arm) {
 }
   
 
+#Executing fuctions for each arm:
 
-#doing this stuff for arm_1:
+#arm_1:
 tidy_arm_1 <- fix_dob(arm_1)
 change_character(tidy_arm_1)
 tidy_arm_1 <- lower_to_upper(tidy_arm_1)
-tidy_arm_1 <- xx_to_na(tidy_arm_1)
+tidy_arm_1 <- xx_fix(tidy_arm_1)
+tidy_arm_1 <- community(tidy_arm_1)
 #tidy_arm_1<- full_name_correction(tidy_arm_1)
 tidy_arm_1<- full_name_correction2(tidy_arm_1)
 tidy_arm_1 <- make_id(tidy_arm_1)
 tidy_arm_1 <- corrected(tidy_arm_1)
 
-#doing this stuff for arm_4:
-#tidy_arm_4 <- fix_dob(arm_4)
-#change_character(tidy_arm_4)
-#tidy_arm_4 <- lower_to_upper(tidy_arm_4)
-#tidy_arm_4<- full_name_correction(tidy_arm_4)
-#tidy_arm_4 <- xx_to_na(tidy_arm_4)
-#tidy_arm_4 <- make_id(tidy_arm_4)
-#tidy_arm_4 <- corrected(tidy_arm_4)
-
-#For arm_3:
-#tidy_arm_3 <- fix_dob(arm_3)
-#change_character(tidy_arm_3)
-#tidy_arm_3 <- lower_to_upper(tidy_arm_3)
-#tidy_arm_3<- full_name_correction(tidy_arm_3)
-#tidy_arm_3 <- xx_to_na(tidy_arm_3)
-#tidy_arm_3 <- make_id(tidy_arm_3)
-#tidy_arm_3 <- corrected(tidy_arm_3)
-
-#For arm_2:
+#arm_2:
 tidy_arm_2 <- fix_dob(arm_2)
 change_character(tidy_arm_2)
 tidy_arm_2 <- lower_to_upper(tidy_arm_2)
-tidy_arm_2 <- xx_to_na(tidy_arm_2)
+tidy_arm_2 <- xx_fix(tidy_arm_2)
+tidy_arm_2 <- community(tidy_arm_2)
 #tidy_arm_2<- full_name_correction(tidy_arm_2)
 tidy_arm_2<- full_name_correction2(tidy_arm_2)
 tidy_arm_2 <- make_id(tidy_arm_2)
 tidy_arm_2 <- corrected(tidy_arm_2)
+
+#arm_3:
+#tidy_arm_3 <- fix_dob(arm_3)
+#change_character(tidy_arm_3)
+#tidy_arm_3 <- lower_to_upper(tidy_arm_3)
+#tidy_arm_3 <- xx_fix(tidy_arm_3)
+#tidy_arm_3 <- community(tidy_arm_3)
+#tidy_arm_3<- full_name_correction(tidy_arm_3)
+#tidy_arm_3<- full_name_correction2(tidy_arm_3)
+#tidy_arm_3 <- make_id(tidy_arm_3)
+#tidy_arm_3 <- corrected(tidy_arm_3)
+
+#arm_4:
+#tidy_arm_4 <- fix_dob(arm_4)
+#change_character(tidy_arm_4)
+#tidy_arm_4 <- lower_to_upper(tidy_arm_4)
+#tidy_arm_4 <- xx_fix(tidy_arm_4)
+#tidy_arm_4 <- community(tidy_arm_4)
+#tidy_arm_4<- full_name_correction(tidy_arm_4)
+#tidy_arm_4<- full_name_correction2(tidy_arm_4)
+#tidy_arm_4 <- make_id(tidy_arm_4)
+#tidy_arm_4 <- corrected(tidy_arm_4)
+
 
 
 #Now we have our four arms. Time to combine and match.
