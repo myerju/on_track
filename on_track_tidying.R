@@ -133,3 +133,9 @@ tidy_arm_4<- full_name_correction(tidy_arm_4)
 tidy_arm_4 <- make_id(tidy_arm_4)
 tidy_arm_4 <- corrected(tidy_arm_4)
 
+#And finally we export these as csv files:
+write.csv(tidy_arm_1, "/Users/alexsalem/Documents/ontrack/tidy_arm_1.csv")
+write.csv(tidy_arm_2, "/Users/alexsalem/Documents/ontrack/tidy_arm_2.csv")
+write.csv(tidy_arm_3, "/Users/alexsalem/Documents/ontrack/tidy_arm_3.csv")
+write.csv(tidy_arm_4, "/Users/alexsalem/Documents/ontrack/tidy_arm_4.csv")
+
